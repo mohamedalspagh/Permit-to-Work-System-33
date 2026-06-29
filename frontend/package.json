@@ -1,0 +1,55 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "main-electron.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:start": "concurrently \"npm run dev\" \"cross-env NODE_ENV=development electron .\"",
+    "electron:build": "vite build && electron-builder",
+    "cap:sync": "cap sync",
+    "cap:open-android": "cap open android",
+    "cap:open-ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  },
+  "build": {
+    "appId": "com.ehs.permitwork",
+    "productName": "Permit to Work",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "main-electron.cjs"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
