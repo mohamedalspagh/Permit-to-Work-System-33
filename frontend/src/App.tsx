@@ -31,6 +31,36 @@ import { TrainingManager } from './components/TrainingManager';
 import { SafetyAiCopilot } from './components/SafetyAiCopilot';
 import { PlatformPerformance } from './components/PlatformPerformance';
 
+// Firebase Helpers
+import {
+  isFirebaseConfigured,
+  dbGetUsers,
+  dbSaveUser,
+  dbSaveUsersBatch,
+  dbDeleteUser,
+  dbGetPermits,
+  dbSavePermit,
+  dbSavePermitsBatch,
+  dbDeletePermit,
+  dbGetIncidents,
+  dbSaveIncident,
+  dbSaveIncidentsBatch,
+  dbDeleteIncident,
+  dbGetHiras,
+  dbSaveHira,
+  dbSaveHirasBatch,
+  dbDeleteHira,
+  dbGetAudits,
+  dbSaveAudit,
+  dbSaveAuditsBatch,
+  dbDeleteAudit,
+  dbGetTrainings,
+  dbSaveTraining,
+  dbSaveTrainingsBatch,
+  dbDeleteTraining
+} from "./utils/firebase";
+
+
 import { 
   ShieldAlert, Wrench, Factory, Activity, CheckCircle, 
   Clock, Flame, Construction, HelpCircle, FileStack, LogOut, Globe,
@@ -183,137 +213,241 @@ export default function App() {
 
   // 1. Initial State Loading & Storage Sync (EHS Enhanced)
   React.useEffect(() => {
-    // Load dynamic users list
-    const storedUsers = localStorage.getItem('ehs_users_v3');
-    if (storedUsers) {
-      try {
-        let parsed = JSON.parse(storedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          let upgraded = false;
-          parsed = parsed.map(user => {
-            const updatedUser = { ...user };
-            if (updatedUser.departmentAr && (
-              updatedUser.departmentAr.includes('القسم') || 
-              updatedUser.departmentAr.includes('قسم') ||
-              updatedUser.departmentAr === 'الإنتاج والتشغيل' ||
-              updatedUser.departmentAr === 'الكهرباء والطاقة' ||
-              updatedUser.departmentAr === 'السلامة والصحة المهنية'
-            )) {
-              upgraded = true;
-              if (updatedUser.departmentAr.includes('الهندسي') || updatedUser.departmentAr.includes('ميكانيكا')) {
-                updatedUser.departmentAr = 'إدارة الصيانة';
-                updatedUser.departmentEn = 'Maintenance Administration';
-              } else if (updatedUser.departmentAr.includes('الإنتاج') || updatedUser.departmentAr.includes('تشغيل')) {
-                updatedUser.departmentAr = 'إدارة الإنتاج والتشغيل';
-                updatedUser.departmentEn = 'Production & Operations Administration';
-              } else if (updatedUser.departmentAr.includes('الكهرباء')) {
-                updatedUser.departmentAr = 'إدارة الكهرباء';
-                updatedUser.departmentEn = 'Electrical Administration';
-                if (updatedUser.roleAr) {
-                  updatedUser.roleAr = updatedUser.roleAr.replace('رئيس قسم الكهرباء', 'رئيس إدارة الكهرباء');
-                }
-              } else if (updatedUser.departmentAr.includes('السلامة')) {
-                updatedUser.departmentAr = 'إدارة السلامة والصحة المهنية';
-                updatedUser.departmentEn = 'Safety & Occupational Health Administration (HSE)';
-              } else {
-                // General replacements of 'قسم' with 'إدارة'
-                updatedUser.departmentAr = updatedUser.departmentAr.replace(/قسم\s*/, 'إدارة ');
-              }
+    async function initData() {
+      if (isFirebaseConfigured) {
+        try {
+          const dbUsers = await dbGetUsers();
+          const dbPermits = await dbGetPermits();
+          const dbIncidents = await dbGetIncidents();
+          const dbHiras = await dbGetHiras();
+          const dbAudits = await dbGetAudits();
+          const dbTrainings = await dbGetTrainings();
+
+          if (dbUsers) {
+            let userList = dbUsers;
+            if (userList.length === 0) {
+              userList = DEFAULT_USERS_SEED;
+              await dbSaveUsersBatch(DEFAULT_USERS_SEED);
             }
-            return updatedUser;
-          });
-          // Ensure absolute presence of first admin account
-          const hasAdmin = parsed.some((u: any) => u.username === 'admin');
-          if (!hasAdmin) {
-            parsed.unshift({
-              empCode: 'ADMIN01',
-              password: 'admin',
-              sandboxRole: 'HSE',
-              customRole: 'SAFETY_MANAGER',
-              username: 'admin',
-              fullNameAr: 'مدير النظام (admin)',
-              fullNameEn: 'System Administrator (admin)',
-              roleAr: 'مدير النظام',
-              roleEn: 'System Administrator',
-              departmentAr: 'إدارة السلامة والصحة المهنية',
-              departmentEn: 'Safety & Occupational Health Administration (HSE)',
-              canCreatePermit: true,
-              canApproveElectrical: true,
-              canApproveProduction: true,
-              canApproveSafety: true
-            });
-            upgraded = true;
+            setUsers(userList);
+            localStorage.setItem('ehs_users_v3', JSON.stringify(userList));
+          } else {
+            loadUsersFromLocalStorage();
           }
 
-          if (upgraded) {
-            localStorage.setItem('ehs_users_v3', JSON.stringify(parsed));
+          if (dbPermits) {
+            let permitList = dbPermits;
+            if (permitList.length === 0) {
+              permitList = INITIAL_PERMITS_SEED;
+              await dbSavePermitsBatch(INITIAL_PERMITS_SEED);
+            }
+            setPermits(permitList);
+            localStorage.setItem('ptw_records_v3', JSON.stringify(permitList));
+          } else {
+            loadPermitsFromLocalStorage();
           }
-          setUsers(parsed);
-        } else {
+
+          if (dbIncidents) {
+            let incidentList = dbIncidents;
+            if (incidentList.length === 0) {
+              incidentList = INITIAL_INCIDENTS;
+              await dbSaveIncidentsBatch(INITIAL_INCIDENTS);
+            }
+            setIncidents(incidentList);
+            localStorage.setItem('ehs_incidents_v3', JSON.stringify(incidentList));
+          } else {
+            loadIncidentsFromLocalStorage();
+          }
+
+          if (dbHiras) {
+            let hiraList = dbHiras;
+            if (hiraList.length === 0) {
+              hiraList = INITIAL_HIRAS;
+              await dbSaveHirasBatch(INITIAL_HIRAS);
+            }
+            setHiras(hiraList);
+            localStorage.setItem('ehs_hiras_v3', JSON.stringify(hiraList));
+          } else {
+            loadHirasFromLocalStorage();
+          }
+
+          if (dbAudits) {
+            let auditList = dbAudits;
+            if (auditList.length === 0) {
+              auditList = INITIAL_AUDITS;
+              await dbSaveAuditsBatch(INITIAL_AUDITS);
+            }
+            setAudits(auditList);
+            localStorage.setItem('ehs_audits_v3', JSON.stringify(auditList));
+          } else {
+            loadAuditsFromLocalStorage();
+          }
+
+          if (dbTrainings) {
+            let trainingList = dbTrainings;
+            if (trainingList.length === 0) {
+              trainingList = INITIAL_TRAINING;
+              await dbSaveTrainingsBatch(INITIAL_TRAINING);
+            }
+            setTrainings(trainingList);
+            localStorage.setItem('ehs_trainings_v3', JSON.stringify(trainingList));
+          } else {
+            loadTrainingsFromLocalStorage();
+          }
+        } catch (error) {
+          console.error("Failed to load Firebase data, falling back to localStorage", error);
+          loadAllFromLocalStorage();
+        }
+      } else {
+        loadAllFromLocalStorage();
+      }
+    }
+
+    function loadUsersFromLocalStorage() {
+      const storedUsers = localStorage.getItem('ehs_users_v3');
+      if (storedUsers) {
+        try {
+          let parsed = JSON.parse(storedUsers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            let upgraded = false;
+            parsed = parsed.map(user => {
+              const updatedUser = { ...user };
+              if (updatedUser.departmentAr && (
+                updatedUser.departmentAr.includes('القسم') || 
+                updatedUser.departmentAr.includes('قسم') ||
+                updatedUser.departmentAr === 'الإنتاج والتشغيل' ||
+                updatedUser.departmentAr === 'الكهرباء والطاقة' ||
+                updatedUser.departmentAr === 'السلامة والصحة المهنية'
+              )) {
+                upgraded = true;
+                if (updatedUser.departmentAr.includes('الهندسي') || updatedUser.departmentAr.includes('ميكانيكا')) {
+                  updatedUser.departmentAr = 'إدارة الصيانة';
+                  updatedUser.departmentEn = 'Maintenance Administration';
+                } else if (updatedUser.departmentAr.includes('الإنتاج') || updatedUser.departmentAr.includes('تشغيل')) {
+                  updatedUser.departmentAr = 'إدارة الإنتاج والتشغيل';
+                  updatedUser.departmentEn = 'Production & Operations Administration';
+                } else if (updatedUser.departmentAr.includes('الكهرباء')) {
+                  updatedUser.departmentAr = 'إدارة الكهرباء';
+                  updatedUser.departmentEn = 'Electrical Administration';
+                  if (updatedUser.roleAr) {
+                    updatedUser.roleAr = updatedUser.roleAr.replace('رئيس قسم الكهرباء', 'رئيس إدارة الكهرباء');
+                  }
+                } else if (updatedUser.departmentAr.includes('السلامة')) {
+                  updatedUser.departmentAr = 'إدارة السلامة والصحة المهنية';
+                  updatedUser.departmentEn = 'Safety & Occupational Health Administration (HSE)';
+                } else {
+                  updatedUser.departmentAr = updatedUser.departmentAr.replace(/قسم\s*/, 'إدارة ');
+                }
+              }
+              return updatedUser;
+            });
+            const hasAdmin = parsed.some((u: any) => u.username === 'admin');
+            if (!hasAdmin) {
+              parsed.unshift({
+                empCode: 'ADMIN01',
+                password: 'admin',
+                sandboxRole: 'HSE',
+                customRole: 'SAFETY_MANAGER',
+                username: 'admin',
+                fullNameAr: 'مدير النظام (admin)',
+                fullNameEn: 'System Administrator (admin)',
+                roleAr: 'مدير النظام',
+                roleEn: 'System Administrator',
+                departmentAr: 'إدارة السلامة والصحة المهنية',
+                departmentEn: 'Safety & Occupational Health Administration (HSE)',
+                canCreatePermit: true,
+                canApproveElectrical: true,
+                canApproveProduction: true,
+                canApproveSafety: true
+              });
+              upgraded = true;
+            }
+            if (upgraded) {
+              localStorage.setItem('ehs_users_v3', JSON.stringify(parsed));
+            }
+            setUsers(parsed);
+          } else {
+            setUsers(DEFAULT_USERS_SEED);
+          }
+        } catch (e) {
           setUsers(DEFAULT_USERS_SEED);
         }
-      } catch (e) {
+      } else {
         setUsers(DEFAULT_USERS_SEED);
+        localStorage.setItem('ehs_users_v3', JSON.stringify(DEFAULT_USERS_SEED));
       }
-    } else {
-      setUsers(DEFAULT_USERS_SEED);
-      localStorage.setItem('ehs_users_v3', JSON.stringify(DEFAULT_USERS_SEED));
     }
 
-    // PTW Permits storage
-    const storedPermits = localStorage.getItem('ptw_records_v3');
-    if (storedPermits) {
-      try {
-        const parsed = JSON.parse(storedPermits);
-        setPermits(Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PERMITS_SEED);
-      } catch (e) {
+    function loadPermitsFromLocalStorage() {
+      const storedPermits = localStorage.getItem('ptw_records_v3');
+      if (storedPermits) {
+        try {
+          const parsed = JSON.parse(storedPermits);
+          setPermits(Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PERMITS_SEED);
+        } catch (e) {
+          setPermits(INITIAL_PERMITS_SEED);
+        }
+      } else {
         setPermits(INITIAL_PERMITS_SEED);
+        localStorage.setItem('ptw_records_v3', JSON.stringify(INITIAL_PERMITS_SEED));
       }
-    } else {
-      setPermits(INITIAL_PERMITS_SEED);
-      localStorage.setItem('ptw_records_v3', JSON.stringify(INITIAL_PERMITS_SEED));
     }
 
-    // Incidents storage
-    const storedInc = localStorage.getItem('ehs_incidents_v3');
-    if (storedInc) {
-      try { getAndSetCollection(storedInc, setIncidents, INITIAL_INCIDENTS); } catch (e) { setIncidents(INITIAL_INCIDENTS); }
-    } else {
-      setIncidents(INITIAL_INCIDENTS);
-      localStorage.setItem('ehs_incidents_v3', JSON.stringify(INITIAL_INCIDENTS));
+    function loadIncidentsFromLocalStorage() {
+      const storedInc = localStorage.getItem('ehs_incidents_v3');
+      if (storedInc) {
+        try { getAndSetCollection(storedInc, setIncidents, INITIAL_INCIDENTS); } catch (e) { setIncidents(INITIAL_INCIDENTS); }
+      } else {
+        setIncidents(INITIAL_INCIDENTS);
+        localStorage.setItem('ehs_incidents_v3', JSON.stringify(INITIAL_INCIDENTS));
+      }
     }
 
-    // HIRAs storage
-    const storedHiras = localStorage.getItem('ehs_hiras_v3');
-    if (storedHiras) {
-      try { getAndSetCollection(storedHiras, setHiras, INITIAL_HIRAS); } catch (e) { setHiras(INITIAL_HIRAS); }
-    } else {
-      setHiras(INITIAL_HIRAS);
-      localStorage.setItem('ehs_hiras_v3', JSON.stringify(INITIAL_HIRAS));
+    function loadHirasFromLocalStorage() {
+      const storedHiras = localStorage.getItem('ehs_hiras_v3');
+      if (storedHiras) {
+        try { getAndSetCollection(storedHiras, setHiras, INITIAL_HIRAS); } catch (e) { setHiras(INITIAL_HIRAS); }
+      } else {
+        setHiras(INITIAL_HIRAS);
+        localStorage.setItem('ehs_hiras_v3', JSON.stringify(INITIAL_HIRAS));
+      }
     }
 
-    // Audits storage
-    const storedAudits = localStorage.getItem('ehs_audits_v3');
-    if (storedAudits) {
-      try { getAndSetCollection(storedAudits, setAudits, INITIAL_AUDITS); } catch (e) { setAudits(INITIAL_AUDITS); }
-    } else {
-      setAudits(INITIAL_AUDITS);
-      localStorage.setItem('ehs_audits_v3', JSON.stringify(INITIAL_AUDITS));
+    function loadAuditsFromLocalStorage() {
+      const storedAudits = localStorage.getItem('ehs_audits_v3');
+      if (storedAudits) {
+        try { getAndSetCollection(storedAudits, setAudits, INITIAL_AUDITS); } catch (e) { setAudits(INITIAL_AUDITS); }
+      } else {
+        setAudits(INITIAL_AUDITS);
+        localStorage.setItem('ehs_audits_v3', JSON.stringify(INITIAL_AUDITS));
+      }
     }
 
-    // Trainings storage
-    const storedTrainings = localStorage.getItem('ehs_trainings_v3');
-    if (storedTrainings) {
-      try { getAndSetCollection(storedTrainings, setTrainings, INITIAL_TRAINING); } catch (e) { setTrainings(INITIAL_TRAINING); }
-    } else {
-      setTrainings(INITIAL_TRAINING);
-      localStorage.setItem('ehs_trainings_v3', JSON.stringify(INITIAL_TRAINING));
+    function loadTrainingsFromLocalStorage() {
+      const storedTrainings = localStorage.getItem('ehs_trainings_v3');
+      if (storedTrainings) {
+        try { getAndSetCollection(storedTrainings, setTrainings, INITIAL_TRAINING); } catch (e) { setTrainings(INITIAL_TRAINING); }
+      } else {
+        setTrainings(INITIAL_TRAINING);
+        localStorage.setItem('ehs_trainings_v3', JSON.stringify(INITIAL_TRAINING));
+      }
+    }
+
+    function loadAllFromLocalStorage() {
+      loadUsersFromLocalStorage();
+      loadPermitsFromLocalStorage();
+      loadIncidentsFromLocalStorage();
+      loadHirasFromLocalStorage();
+      loadAuditsFromLocalStorage();
+      loadTrainingsFromLocalStorage();
     }
 
     function getAndSetCollection(jsonStr: string, setter: Function, fallback: any[]) {
       const parsed = JSON.parse(jsonStr);
       setter(Array.isArray(parsed) && parsed.length > 0 ? parsed : fallback);
     }
+
+    initData();
 
     // Set time clock
     const updateTime = () => {
@@ -338,12 +472,14 @@ export default function App() {
     const updated = [...users, newUser];
     setUsers(updated);
     localStorage.setItem('ehs_users_v3', JSON.stringify(updated));
+    dbSaveUser(newUser);
   };
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
     const updated = users.map(u => u.empCode === updatedUser.empCode ? updatedUser : u);
     setUsers(updated);
     localStorage.setItem('ehs_users_v3', JSON.stringify(updated));
+    dbSaveUser(updatedUser);
     
     // If we updated the currently logged in user, refresh their record
     if (currentUser && currentUser.empCode === updatedUser.empCode) {
@@ -356,6 +492,7 @@ export default function App() {
     const updated = users.filter(u => u.empCode !== empCode);
     setUsers(updated);
     localStorage.setItem('ehs_users_v3', JSON.stringify(updated));
+    dbDeleteUser(empCode);
   };
 
   const savePermitsState = (updatedList: Permit[]) => {
@@ -387,57 +524,68 @@ export default function App() {
   const handleAddIncident = (newInc: Incident) => {
     const list = [newInc, ...incidents];
     saveIncidentsState(list);
+    dbSaveIncident(newInc);
   };
 
   const handleUpdateIncident = (updated: Incident) => {
     const list = incidents.map(i => i.id === updated.id ? updated : i);
     saveIncidentsState(list);
+    dbSaveIncident(updated);
   };
 
   const handleDeleteIncident = (id: string) => {
     const list = incidents.filter(i => i.id !== id);
     saveIncidentsState(list);
+    dbDeleteIncident(id);
   };
 
   const handleAddHira = (newHira: HiraAssessment) => {
     const list = [newHira, ...hiras];
     saveHirasState(list);
+    dbSaveHira(newHira);
   };
 
   const handleUpdateHira = (updated: HiraAssessment) => {
     const list = hiras.map(h => h.id === updated.id ? updated : h);
     saveHirasState(list);
+    dbSaveHira(updated);
   };
 
   const handleDeleteHira = (id: string) => {
     const list = hiras.filter(h => h.id !== id);
     saveHirasState(list);
+    dbDeleteHira(id);
   };
 
   const handleAddAudit = (newAudit: SafetyAudit) => {
     const list = [newAudit, ...audits];
     saveAuditsState(list);
+    dbSaveAudit(newAudit);
   };
 
   const handleUpdateAudit = (updated: SafetyAudit) => {
     const list = audits.map(a => a.id === updated.id ? updated : a);
     saveAuditsState(list);
+    dbSaveAudit(updated);
   };
 
   const handleAddTraining = (newTr: TrainingRecord) => {
     const list = [newTr, ...trainings];
     saveTrainingsState(list);
+    dbSaveTraining(newTr);
   };
 
   // Updaters (Existing Permits)
   const handleUpdatePermit = (updatedPermit: Permit) => {
     const newList = permits.map(p => p.id === updatedPermit.id ? updatedPermit : p);
     savePermitsState(newList);
+    dbSavePermit(updatedPermit);
   };
 
   const handleCreateDraft = (newPermit: Permit) => {
     const newList = [newPermit, ...permits];
     savePermitsState(newList);
+    dbSavePermit(newPermit);
     setIsCreating(false);
     setSelectedPermitId(newPermit.id); // Open it immediately in detailed review
   };
@@ -445,6 +593,7 @@ export default function App() {
   const handleDeletePermit = (id: string) => {
     const newList = permits.filter(p => p.id !== id);
     savePermitsState(newList);
+    dbDeletePermit(id);
     setSelectedPermitId(null);
   };
 
