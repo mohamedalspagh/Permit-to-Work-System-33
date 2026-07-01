@@ -7,6 +7,7 @@ import React from 'react';
 import { Factory, Lock, ArrowRight, Activity, ShieldAlert, Globe } from 'lucide-react';
 import { UserProfile, Language } from '../types';
 import { t, getLocalizedValue } from '../utils/translations';
+import { DEFAULT_TENANTS, getTenantFeatureHints, getTenantPlanLabel } from '../utils/saas';
 
 interface LoginScreenProps {
   users: UserProfile[];
@@ -112,6 +113,22 @@ export function LoginScreen({ users, onLogin, language, onLanguageChange }: Logi
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('Please enter your employee ID and password', language)}
               </p>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-left dark:border-slate-800 dark:bg-slate-950/50">
+                <div className="flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  <span>Multi-tenant SaaS access</span>
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                    {getTenantPlanLabel(DEFAULT_TENANTS[0])}
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                  {getTenantFeatureHints(DEFAULT_TENANTS[0]).map((hint) => (
+                    <li key={hint} className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                      <span>{hint}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" dir={language === 'ar' ? 'rtl' : 'ltr'}>

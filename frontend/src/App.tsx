@@ -7,7 +7,7 @@ import React from 'react';
 import { Permit, SandboxRole, Incident, HiraAssessment, SafetyAudit, TrainingRecord, UserProfile, Language, Tenant } from './types';
 import { USER_PROFILES } from './utils/initialData';
 import { t, getLocalizedValue } from './utils/translations';
-import { DEFAULT_TENANTS, canManageUsers, canApprovePermits, filterTenantRecords, getTenantDisplayName, isTenantActive } from './utils/saas';
+import { DEFAULT_TENANTS, canManageUsers, canApprovePermits, filterTenantRecords, getTenantDisplayName, getTenantFeatureHints, getTenantPlanLabel, isTenantActive } from './utils/saas';
 import { 
   INITIAL_PERMITS_SEED, 
   INITIAL_INCIDENTS, 
@@ -19,6 +19,9 @@ import { Dashboard } from './components/Dashboard';
 import { PermitDetail } from './components/PermitDetail';
 import { PermitForm } from './components/PermitForm';
 import { LoginScreen } from './components/LoginScreen';
+import { AdminConsole } from './components/AdminConsole';
+import { CompanyDashboard } from './components/CompanyDashboard';
+import { CompanyBillingAnalytics } from './components/CompanyBillingAnalytics';
 import { NotificationsPanel } from './components/NotificationsPanel';
 import { UserManager } from './components/UserManager';
 import { PushNotificationService } from './utils/pushNotificationService';
@@ -181,6 +184,10 @@ export default function App() {
   const [language, setLanguage] = React.useState<Language>('ar');
   const [isCreating, setIsCreating] = React.useState<boolean>(false);
   const [currentTime, setCurrentTime] = React.useState<string>('');
+  const [tenants, setTenants] = React.useState<Tenant[]>(DEFAULT_TENANTS);
+  const [isAdminMode, setIsAdminMode] = React.useState<boolean>(false);
+  const [isCompanyDashboardMode, setIsCompanyDashboardMode] = React.useState<boolean>(false);
+  const [isBillingAnalyticsMode, setIsBillingAnalyticsMode] = React.useState<boolean>(false);
 
   // Added EHS Module Persistence States
   const [activeTab, setActiveTab] = React.useState<EhsTab>('PERMITS');
@@ -203,6 +210,43 @@ export default function App() {
       PushNotificationService.requestPermission();
     }
   }, [isLoggedIn, currentUser]);
+
+  const handleCreateCompany = (company: Tenant) => {
+    setTenants((prev) => [company, ...prev]);
+    setActiveTenant(company);
+  };
+
+  const handleUpgradeCompanyPlan = (companyId: string, plan: Tenant['plan']) => {
+    setTenants((prev) => prev.map((tenant) => tenant.id === companyId ? { ...tenant, plan } : tenant));
+  };
+
+  const handleCreateUser = (user: UserProfile) => {
+    const selectedTenant = tenants.find((tenant) => tenant.id === user.tenantId);
+    const currentTenantUsers = users.filter((entry) => entry.tenantId === user.tenantId);
+    if (selectedTenant && currentTenantUsers.length >= selectedTenant.maxUsers) {
+      return;
+    }
+
+    setUsers((prev) => [user, ...prev]);
+    if (user.tenantId) {
+      setCurrentUser((prev) => ({ ...prev, tenantId: user.tenantId, permissions: user.permissions ?? prev.permissions }));
+    }
+  };
+
+  const handleSwitchTenant = (tenantId: string) => {
+    const nextTenant = tenants.find((tenant) => tenant.id === tenantId) || activeTenant;
+    if (nextTenant) {
+      setActiveTenant(nextTenant);
+      setCurrentUser((prev) => ({ ...prev, tenantId: nextTenant.id }));
+      setIsCompanyDashboardMode(false);
+      setIsBillingAnalyticsMode(false);
+      setActiveTab('PERMITS');
+    }
+  };
+
+  const handleAdminDeleteUser = (empCode: string) => {
+    setUsers((prev) => prev.filter((entry) => entry.empCode !== empCode));
+  };
 
   const handleAutoSwitchUser = (targetUser: UserProfile, permitId: string) => {
     // Switch the logged-in user profile & role
@@ -594,11 +638,13 @@ export default function App() {
           <LoginScreen 
             users={users.length > 0 ? users : DEFAULT_USERS_SEED}
             onLogin={(user) => {
-              const tenant = DEFAULT_TENANTS.find((item) => item.id === (user.tenantId || 'tenant-demo')) || DEFAULT_TENANTS[0];
+              const tenant = tenants.find((item) => item.id === (user.tenantId || 'tenant-demo')) || tenants[0] || DEFAULT_TENANTS[0];
               setCurrentUser({ ...user, tenantId: tenant.id, permissions: user.permissions ?? ['permits.create', 'permits.view'] });
               setActiveTenant(tenant);
               setCurrentRole(user.sandboxRole || 'REQUESTER');
               setIsLoggedIn(true);
+              setIsAdminMode(user.username === 'admin');
+              setIsCompanyDashboardMode(user.customRole === 'SUPER_ADMIN' || user.permissions?.includes('tenants.view'));
               if (user.username !== 'admin') {
                 setActiveTab('PERMITS');
               }
@@ -608,6 +654,49 @@ export default function App() {
           />
         </div>
       </div>
+    );
+  }
+
+  if (isAdminMode) {
+    return (
+      <AdminConsole
+        companies={tenants}
+        users={users}
+        onCreateCompany={handleCreateCompany}
+        onCreateUser={handleCreateUser}
+        onDeleteUser={handleAdminDeleteUser}
+        onUpgradePlan={handleUpgradeCompanyPlan}
+        language={language}
+      />
+    );
+  }
+
+  if (isCompanyDashboardMode) {
+    return (
+      <CompanyDashboard
+        company={activeTenant}
+        currentUser={currentUser}
+        users={users}
+        language={language}
+        onSwitchTenant={handleSwitchTenant}
+        onOpenBilling={() => setIsBillingAnalyticsMode(true)}
+      />
+    );
+  }
+
+  if (isBillingAnalyticsMode) {
+    return (
+      <CompanyBillingAnalytics
+        company={activeTenant}
+        currentUser={currentUser}
+        users={users}
+        language={language}
+        onUpgradePlan={(plan) => handleUpgradeCompanyPlan(activeTenant.id, plan)}
+        onBack={() => {
+          setIsBillingAnalyticsMode(false);
+          setIsCompanyDashboardMode(true);
+        }}
+      />
     );
   }
 
@@ -635,7 +724,7 @@ export default function App() {
                   : (language === 'zh' ? '现场安全准入、工作许可与上锁挂牌能源隔离监控系统' : 'Safety & Work Control Management System')}
               </p>
               <p className="mt-1 text-[10px] font-semibold text-orange-400">
-                {getTenantDisplayName(activeTenant)} • {isTenantActive(activeTenant) ? 'Active tenant' : 'Restricted tenant'}
+                {getTenantDisplayName(activeTenant)} • {getTenantPlanLabel(activeTenant)} • {isTenantActive(activeTenant) ? 'Active tenant' : 'Restricted tenant'}
               </p>
             </div>
           </div>
@@ -726,7 +815,14 @@ export default function App() {
       {/* SECTION 2: MODULAR EHS SEGMENT SELECTOR */}
       <div className="bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-2 text-sm text-slate-500">
-          <span className="font-semibold text-slate-700">Tenant scope:</span> {getTenantDisplayName(activeTenant)} • RBAC enabled • Audit trail ready
+          <span className="font-semibold text-slate-700">Tenant scope:</span> {getTenantDisplayName(activeTenant)} • {getTenantPlanLabel(activeTenant)} • RBAC enabled • Audit trail ready
+          <div className="mt-1 flex flex-wrap gap-2">
+            {getTenantFeatureHints(activeTenant).map((hint) => (
+              <span key={hint} className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+                {hint}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 flex flex-row gap-1 sm:gap-2 py-3 overflow-x-auto justify-start" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           

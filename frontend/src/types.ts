@@ -98,6 +98,10 @@ export interface Tenant {
   plan: TenantPlan;
   maxUsers: number;
   status: TenantStatus;
+  description?: string;
+  ownerEmail?: string;
+  companyAdminId?: string;
+  logoUrl?: string;
 }
 
 export interface TenantScopedRecord {

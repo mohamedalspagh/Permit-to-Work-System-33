@@ -53,3 +53,33 @@ export function getTenantDisplayName(tenant?: Tenant): string {
 export function isTenantActive(tenant?: Tenant): boolean {
   return tenant?.status === 'ACTIVE' || tenant?.status === 'TRIAL';
 }
+
+export function getTenantPlanLabel(tenant?: Tenant): string {
+  if (!tenant) {
+    return 'Starter';
+  }
+
+  switch (tenant.plan) {
+    case 'ENTERPRISE':
+      return 'Enterprise';
+    case 'GROWTH':
+      return 'Growth';
+    default:
+      return 'Starter';
+  }
+}
+
+export function getTenantFeatureHints(tenant?: Tenant): string[] {
+  if (!tenant) {
+    return ['Basic permits', 'Basic reporting'];
+  }
+
+  switch (tenant.plan) {
+    case 'ENTERPRISE':
+      return ['Advanced AI recommendations', 'Audit exports', 'Multi-user governance'];
+    case 'GROWTH':
+      return ['Advanced AI recommendations', 'Expanded user seats'];
+    default:
+      return ['Basic permits', 'Basic reporting'];
+  }
+}
