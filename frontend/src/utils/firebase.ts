@@ -18,12 +18,12 @@ import {
 } from "../types";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCG3pjCVp_OIR3Jpl7wdT4OLifzRmQ0K-U",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "permit-to-work-system-33.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "permit-to-work-system-33",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "permit-to-work-system-33.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "920853786826",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:920853786826:web:b6bf352ef2d8676af4c433",
 };
 
 // Check if Firebase config is supplied and valid (i.e. not placeholder)
