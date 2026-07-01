@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import { buildTenantScopedQuery, createTenantContext, filterTenantData, type SaaSUser, type TenantContext } from "./saas";
 
 dotenv.config();
 
@@ -66,8 +67,58 @@ const getFallbackRecommendations = (promptType: string, task: string) => {
 
 // --- API ROUTES ---
 
+const tenants: TenantContext[] = [
+  createTenantContext({ id: "tenant-demo", name: "Demo Manufacturing Co.", plan: "ENTERPRISE", maxUsers: 250, status: "ACTIVE" }),
+  createTenantContext({ id: "tenant-solar", name: "Solar Grid Operations", plan: "GROWTH", maxUsers: 100, status: "TRIAL" })
+];
+
+const mockUsers: SaaSUser[] = [
+  { id: "u-admin", username: "admin", tenantId: "tenant-demo", role: "SUPER_ADMIN", permissions: ["users.manage", "permits.approve", "tenants.view", "permits.create"] },
+  { id: "u-requester", username: "ahmad_eng", tenantId: "tenant-demo", role: "REQUESTER", permissions: ["permits.create", "permits.view"] }
+];
+
+const mockPermits = [
+  { id: "permit-1", tenantId: "tenant-demo", title: "Hot work", status: "ACTIVE" },
+  { id: "permit-2", tenantId: "tenant-solar", title: "Confined space", status: "PENDING_DEPT" }
+];
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", geminiKeyAvailable: !!process.env.GEMINI_API_KEY });
+});
+
+app.get("/api/tenants", (req, res) => {
+  res.json({ tenants });
+});
+
+app.post("/api/auth/login", (req, res) => {
+  const { username, password, tenantId } = req.body as { username?: string; password?: string; tenantId?: string };
+  const user = mockUsers.find((entry) => entry.username === username && password === "123");
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
+  const tenant = tenants.find((entry) => entry.id === (tenantId || user.tenantId));
+  if (!tenant) {
+    return res.status(404).json({ error: "Tenant not found" });
+  }
+
+  res.json({
+    token: `tenant-token-${user.id}`,
+    user,
+    tenant,
+    permissions: user.permissions,
+    scopedQuery: buildTenantScopedQuery("SELECT * FROM permits", tenant.id)
+  });
+});
+
+app.get("/api/tenant/permits", (req, res) => {
+  const tenantId = req.query.tenantId as string | undefined;
+  if (!tenantId) {
+    return res.status(400).json({ error: "tenantId is required" });
+  }
+
+  res.json({ permits: filterTenantData(mockPermits, tenantId) });
 });
 
 // AI Safety recommendations endpoint

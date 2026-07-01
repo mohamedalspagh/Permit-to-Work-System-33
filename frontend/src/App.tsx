@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { Permit, SandboxRole, Incident, HiraAssessment, SafetyAudit, TrainingRecord, UserProfile, Language } from './types';
+import { Permit, SandboxRole, Incident, HiraAssessment, SafetyAudit, TrainingRecord, UserProfile, Language, Tenant } from './types';
 import { USER_PROFILES } from './utils/initialData';
 import { t, getLocalizedValue } from './utils/translations';
+import { DEFAULT_TENANTS, canManageUsers, canApprovePermits, filterTenantRecords, getTenantDisplayName, isTenantActive } from './utils/saas';
 import { 
   INITIAL_PERMITS_SEED, 
   INITIAL_INCIDENTS, 
@@ -171,8 +172,11 @@ export default function App() {
     roleAr: 'مشرف الفريق المنفذ',
     roleEn: 'Maintenance Engineer',
     departmentAr: 'إدارة الصيانة',
-    departmentEn: 'Maintenance Administration'
+    departmentEn: 'Maintenance Administration',
+    tenantId: 'tenant-demo',
+    permissions: ['permits.create', 'permits.view']
   });
+  const [activeTenant, setActiveTenant] = React.useState<Tenant>(DEFAULT_TENANTS[0]);
   const [currentRole, setCurrentRole] = React.useState<SandboxRole>('REQUESTER');
   const [language, setLanguage] = React.useState<Language>('ar');
   const [isCreating, setIsCreating] = React.useState<boolean>(false);
@@ -365,7 +369,7 @@ export default function App() {
 
   // Secure redirect: Prevent non-admin users from accessing the USERS tab
   React.useEffect(() => {
-    if (activeTab === 'USERS' && (!currentUser || currentUser.username !== 'admin')) {
+    if (activeTab === 'USERS' && (!currentUser || !canManageUsers(currentUser))) {
       setActiveTab('PERMITS');
     }
   }, [activeTab, currentUser]);
@@ -542,10 +546,11 @@ export default function App() {
   const activePermit = permits.find(p => p.id === selectedPermitId);
 
   // Stats calculation
-  const totalCount = permits.length;
-  const activeCount = permits.filter(p => p.status === 'ACTIVE').length;
-  const closedCount = permits.filter(p => p.status === 'CLOSED').length;
-  const pendingCount = permits.filter(p => p.status === 'PENDING_DEPT' || p.status === 'HSE_REVIEW').length;
+  const scopedPermits = filterTenantRecords(permits, activeTenant.id);
+  const totalCount = scopedPermits.length;
+  const activeCount = scopedPermits.filter(p => p.status === 'ACTIVE').length;
+  const closedCount = scopedPermits.filter(p => p.status === 'CLOSED').length;
+  const pendingCount = scopedPermits.filter(p => p.status === 'PENDING_DEPT' || p.status === 'HSE_REVIEW').length;
 
   const getCurrentMonthIncidentsCount = () => {
     const d = new Date();
@@ -570,19 +575,39 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <LoginScreen 
-        users={users.length > 0 ? users : DEFAULT_USERS_SEED}
-        onLogin={(user) => {
-          setCurrentUser(user);
-          setCurrentRole(user.sandboxRole || 'REQUESTER');
-          setIsLoggedIn(true);
-          if (user.username !== 'admin') {
-            setActiveTab('PERMITS');
-          }
-        }} 
-        language={language} 
-        onLanguageChange={setLanguage}
-      />
+      <div className="min-h-screen bg-[#F1F5F9] p-4 flex items-center justify-center">
+        <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">SaaS-ready EHS Platform</h2>
+              <p className="text-sm text-slate-500">Tenant-aware login, RBAC controls, and multi-company isolation are now part of the experience.</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {DEFAULT_TENANTS.map((tenant) => (
+                <div key={tenant.id} className="flex items-center gap-2">
+                  <span className="font-semibold">{tenant.name}</span>
+                  <span className="text-xs uppercase text-slate-400">{tenant.plan}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <LoginScreen 
+            users={users.length > 0 ? users : DEFAULT_USERS_SEED}
+            onLogin={(user) => {
+              const tenant = DEFAULT_TENANTS.find((item) => item.id === (user.tenantId || 'tenant-demo')) || DEFAULT_TENANTS[0];
+              setCurrentUser({ ...user, tenantId: tenant.id, permissions: user.permissions ?? ['permits.create', 'permits.view'] });
+              setActiveTenant(tenant);
+              setCurrentRole(user.sandboxRole || 'REQUESTER');
+              setIsLoggedIn(true);
+              if (user.username !== 'admin') {
+                setActiveTab('PERMITS');
+              }
+            }} 
+            language={language} 
+            onLanguageChange={setLanguage}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -608,6 +633,9 @@ export default function App() {
                 {language === 'ar' 
                   ? 'بوابة السلامة الميدانية وتصاريح العمل وعزل الطاقة والغازات'
                   : (language === 'zh' ? '现场安全准入、工作许可与上锁挂牌能源隔离监控系统' : 'Safety & Work Control Management System')}
+              </p>
+              <p className="mt-1 text-[10px] font-semibold text-orange-400">
+                {getTenantDisplayName(activeTenant)} • {isTenantActive(activeTenant) ? 'Active tenant' : 'Restricted tenant'}
               </p>
             </div>
           </div>
@@ -697,6 +725,9 @@ export default function App() {
 
       {/* SECTION 2: MODULAR EHS SEGMENT SELECTOR */}
       <div className="bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-2 text-sm text-slate-500">
+          <span className="font-semibold text-slate-700">Tenant scope:</span> {getTenantDisplayName(activeTenant)} • RBAC enabled • Audit trail ready
+        </div>
         <div className="max-w-7xl mx-auto px-4 flex flex-row gap-1 sm:gap-2 py-3 overflow-x-auto justify-start" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           
           <button

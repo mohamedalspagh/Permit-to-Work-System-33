@@ -26,7 +26,7 @@ export interface AuditLogEntry {
   comment: string;
 }
 
-export interface Permit {
+export interface Permit extends TenantScopedRecord {
   id: string;
   title: string;
   type: PermitType;
@@ -89,6 +89,22 @@ export interface Permit {
 
 export type SandboxRole = 'REQUESTER' | 'PRODUCTION' | 'ELECTRICAL' | 'HSE';
 
+export type TenantPlan = 'STARTER' | 'GROWTH' | 'ENTERPRISE';
+export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  plan: TenantPlan;
+  maxUsers: number;
+  status: TenantStatus;
+}
+
+export interface TenantScopedRecord {
+  tenantId?: string;
+  [key: string]: unknown;
+}
+
 export interface UserProfile {
   empCode: string;
   password?: string;
@@ -103,11 +119,13 @@ export interface UserProfile {
   departmentEn?: string;
   departmentAr?: string;
   departmentZh?: string;
-  customRole?: 'SAFETY_MANAGER' | 'SAFETY_SUPERVISOR' | 'EMPLOYEE' | 'PRODUCTION_DEPT' | 'ELECTRICAL_DEPT';
+  customRole?: 'SAFETY_MANAGER' | 'SAFETY_SUPERVISOR' | 'EMPLOYEE' | 'PRODUCTION_DEPT' | 'ELECTRICAL_DEPT' | 'SUPER_ADMIN';
   canCreatePermit?: boolean;
   canApproveElectrical?: boolean;
   canApproveProduction?: boolean;
   canApproveSafety?: boolean;
+  permissions?: string[];
+  tenantId?: string;
 }
 
 // === NEW NEBOSH-BASED EHS MODULE TYPES ===
