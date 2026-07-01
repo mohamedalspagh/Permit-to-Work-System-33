@@ -990,8 +990,10 @@ export default function App() {
               ? 'تطبيق تصاريح العمل الإلكتروني (PTW) • ملتزمون بمعايير إدارة السلامة والصحة المهنية بمصانع الإسمنت.'
               : (language === 'zh' ? '安全作业许可证 (PTW) 系统 • 致力于水泥厂职业健康安全危险源控制准则。' : 'Electronic Permit to Work (PTW) Portal • Committed to HSE cement plant hazards control directives.')}
           </p>
-
-          <div className="flex gap-4 text-[11px] font-semibold text-neutral-450">
+          <div className="flex gap-4 text-[11px] font-semibold text-neutral-450 items-center">
+            <span className="text-[10px] bg-slate-100 dark:bg-neutral-850 px-2 py-0.5 rounded text-neutral-500">
+              Firebase: {isFirebaseConfigured ? `Connected (${import.meta.env.VITE_FIREBASE_PROJECT_ID})` : 'Disconnected'}
+            </span>
             <span className="flex items-center gap-1 justify-end">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
               <span>{t('LOTO Secure', language)}</span>
@@ -1000,9 +1002,7 @@ export default function App() {
               <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />
               <span>{t('Audited Portal', language)}</span>
             </span>
-          </div>
-
-        </div>
+          </div>        </div>
       </footer>
 
       {isLoggedIn && (
