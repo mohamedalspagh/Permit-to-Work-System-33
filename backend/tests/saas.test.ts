@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTenantContext, filterTenantData, getUserPermissions, hasPermission } from '../saas.ts';
+import { canAccessFeature, createTenantContext, filterTenantData, getPlanFeatures, getUserPermissions, hasPermission } from '../saas.ts';
 
 test('grants admin permissions and blocks tenant leakage', () => {
   const tenant = createTenantContext({
@@ -29,4 +29,27 @@ test('grants admin permissions and blocks tenant leakage', () => {
   ];
 
   assert.deepEqual(filterTenantData(records, tenant.id), [{ id: 'one', tenantId: 'tenant-a', title: 'Permit A' }]);
+});
+
+test('enables plan-specific features and blocks unsupported access', () => {
+  const starter = createTenantContext({
+    id: 'tenant-starter',
+    name: 'Starter Works',
+    plan: 'STARTER',
+    maxUsers: 10,
+    status: 'TRIAL'
+  });
+
+  const enterprise = createTenantContext({
+    id: 'tenant-enterprise',
+    name: 'Enterprise Works',
+    plan: 'ENTERPRISE',
+    maxUsers: 250,
+    status: 'ACTIVE'
+  });
+
+  assert.deepEqual(getPlanFeatures(starter), ['basic-permits', 'basic-reports']);
+  assert.deepEqual(getPlanFeatures(enterprise), ['basic-permits', 'basic-reports', 'advanced-ai', 'audit-exports']);
+  assert.equal(canAccessFeature(starter, 'advanced-ai'), false);
+  assert.equal(canAccessFeature(enterprise, 'advanced-ai'), true);
 });

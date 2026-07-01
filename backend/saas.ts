@@ -44,3 +44,18 @@ export function filterTenantData<T extends TenantScopedRecord>(records: T[], ten
 export function buildTenantScopedQuery(baseQuery: string, tenantId: string): string {
   return `${baseQuery} WHERE tenant_id = '${tenantId}'`;
 }
+
+export function getPlanFeatures(tenant: TenantContext): string[] {
+  switch (tenant.plan) {
+    case 'ENTERPRISE':
+      return ['basic-permits', 'basic-reports', 'advanced-ai', 'audit-exports'];
+    case 'GROWTH':
+      return ['basic-permits', 'basic-reports', 'advanced-ai'];
+    default:
+      return ['basic-permits', 'basic-reports'];
+  }
+}
+
+export function canAccessFeature(tenant: TenantContext, feature: string): boolean {
+  return getPlanFeatures(tenant).includes(feature);
+}
