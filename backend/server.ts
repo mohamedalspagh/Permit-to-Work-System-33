@@ -122,7 +122,6 @@ app.post("/api/ai/recommendations", async (req, res) => {
 });
 
 // --- SERVER STATIC FILES IN PRODUCTION ---
-
 async function start() {
   if (process.env.NODE_ENV === "production") {
     const distPath = path.join(__dirname, "../frontend/dist");
@@ -141,4 +140,8 @@ async function start() {
   });
 }
 
-start();
+if (!process.env.VERCEL) {
+  start();
+}
+
+export default app;
