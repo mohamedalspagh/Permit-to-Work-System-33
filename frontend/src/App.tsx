@@ -372,16 +372,22 @@ export default function App() {
 
   // Sync state mutations to local storage
   // Dynamic User updaters
-  const handleAddUser = (newUser: UserProfile) => {
+  const handleAddUser = async (newUser: UserProfile) => {
     const updated = [...users, newUser];
     setUsers(updated);
-    dbSaveUser(newUser);
+    const success = await dbSaveUser(newUser);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ المستخدم في Firebase!' : '⚠️ Failed to save user to Firebase!');
+    }
   };
 
-  const handleUpdateUser = (updatedUser: UserProfile) => {
+  const handleUpdateUser = async (updatedUser: UserProfile) => {
     const updated = users.map(u => u.empCode === updatedUser.empCode ? updatedUser : u);
     setUsers(updated);
-    dbSaveUser(updatedUser);
+    const success = await dbSaveUser(updatedUser);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل تحديث المستخدم في Firebase!' : '⚠️ Failed to update user to Firebase!');
+    }
     
     // If we updated the currently logged in user, refresh their record
     if (currentUser && currentUser.empCode === updatedUser.empCode) {
@@ -390,10 +396,13 @@ export default function App() {
     }
   };
 
-  const handleDeleteUser = (empCode: string) => {
+  const handleDeleteUser = async (empCode: string) => {
     const updated = users.filter(u => u.empCode !== empCode);
     setUsers(updated);
-    dbDeleteUser(empCode);
+    const success = await dbDeleteUser(empCode);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حذف المستخدم من Firebase!' : '⚠️ Failed to delete user from Firebase!');
+    }
   };
 
   const savePermitsState = (updatedList: Permit[]) => {
@@ -417,79 +426,115 @@ export default function App() {
   };
 
   // Updaters for newly integrated modules
-  const handleAddIncident = (newInc: Incident) => {
+  const handleAddIncident = async (newInc: Incident) => {
     const list = [newInc, ...incidents];
     saveIncidentsState(list);
-    dbSaveIncident(newInc);
+    const success = await dbSaveIncident(newInc);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ بلاغ الحادث في Firebase!' : '⚠️ Failed to save incident to Firebase!');
+    }
   };
 
-  const handleUpdateIncident = (updated: Incident) => {
+  const handleUpdateIncident = async (updated: Incident) => {
     const list = incidents.map(i => i.id === updated.id ? updated : i);
     saveIncidentsState(list);
-    dbSaveIncident(updated);
+    const success = await dbSaveIncident(updated);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل تحديث بلاغ الحادث في Firebase!' : '⚠️ Failed to update incident in Firebase!');
+    }
   };
 
-  const handleDeleteIncident = (id: string) => {
+  const handleDeleteIncident = async (id: string) => {
     const list = incidents.filter(i => i.id !== id);
     saveIncidentsState(list);
-    dbDeleteIncident(id);
+    const success = await dbDeleteIncident(id);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حذف بلاغ الحادث من Firebase!' : '⚠️ Failed to delete incident from Firebase!');
+    }
   };
 
-  const handleAddHira = (newHira: HiraAssessment) => {
+  const handleAddHira = async (newHira: HiraAssessment) => {
     const list = [newHira, ...hiras];
     saveHirasState(list);
-    dbSaveHira(newHira);
+    const success = await dbSaveHira(newHira);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ تقييم المخاطر (HIRA) في Firebase!' : '⚠️ Failed to save HIRA assessment to Firebase!');
+    }
   };
 
-  const handleUpdateHira = (updated: HiraAssessment) => {
+  const handleUpdateHira = async (updated: HiraAssessment) => {
     const list = hiras.map(h => h.id === updated.id ? updated : h);
     saveHirasState(list);
-    dbSaveHira(updated);
+    const success = await dbSaveHira(updated);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل تحديث تقييم المخاطر (HIRA) في Firebase!' : '⚠️ Failed to update HIRA assessment in Firebase!');
+    }
   };
 
-  const handleDeleteHira = (id: string) => {
+  const handleDeleteHira = async (id: string) => {
     const list = hiras.filter(h => h.id !== id);
     saveHirasState(list);
-    dbDeleteHira(id);
+    const success = await dbDeleteHira(id);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حذف تقييم المخاطر (HIRA) من Firebase!' : '⚠️ Failed to delete HIRA assessment from Firebase!');
+    }
   };
 
-  const handleAddAudit = (newAudit: SafetyAudit) => {
+  const handleAddAudit = async (newAudit: SafetyAudit) => {
     const list = [newAudit, ...audits];
     saveAuditsState(list);
-    dbSaveAudit(newAudit);
+    const success = await dbSaveAudit(newAudit);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ التدقيق في Firebase!' : '⚠️ Failed to save audit to Firebase!');
+    }
   };
 
-  const handleUpdateAudit = (updated: SafetyAudit) => {
+  const handleUpdateAudit = async (updated: SafetyAudit) => {
     const list = audits.map(a => a.id === updated.id ? updated : a);
     saveAuditsState(list);
-    dbSaveAudit(updated);
+    const success = await dbSaveAudit(updated);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل تحديث التدقيق في Firebase!' : '⚠️ Failed to update audit in Firebase!');
+    }
   };
 
-  const handleAddTraining = (newTr: TrainingRecord) => {
+  const handleAddTraining = async (newTr: TrainingRecord) => {
     const list = [newTr, ...trainings];
     saveTrainingsState(list);
-    dbSaveTraining(newTr);
+    const success = await dbSaveTraining(newTr);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ التدريب في Firebase!' : '⚠️ Failed to save training record to Firebase!');
+    }
   };
 
   // Updaters (Existing Permits)
-  const handleUpdatePermit = (updatedPermit: Permit) => {
+  const handleUpdatePermit = async (updatedPermit: Permit) => {
     const newList = permits.map(p => p.id === updatedPermit.id ? updatedPermit : p);
     savePermitsState(newList);
-    dbSavePermit(updatedPermit);
+    const success = await dbSavePermit(updatedPermit);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل تحديث التصريح في Firebase!' : '⚠️ Failed to update permit in Firebase!');
+    }
   };
 
-  const handleCreateDraft = (newPermit: Permit) => {
+  const handleCreateDraft = async (newPermit: Permit) => {
     const newList = [newPermit, ...permits];
     savePermitsState(newList);
-    dbSavePermit(newPermit);
+    const success = await dbSavePermit(newPermit);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حفظ مسودة التصريح في Firebase!' : '⚠️ Failed to save permit draft to Firebase!');
+    }
     setIsCreating(false);
     setSelectedPermitId(newPermit.id); // Open it immediately in detailed review
   };
 
-  const handleDeletePermit = (id: string) => {
+  const handleDeletePermit = async (id: string) => {
     const newList = permits.filter(p => p.id !== id);
     savePermitsState(newList);
-    dbDeletePermit(id);
+    const success = await dbDeletePermit(id);
+    if (!success) {
+      alert(language === 'ar' ? '⚠️ فشل حذف التصريح من Firebase!' : '⚠️ Failed to delete permit from Firebase!');
+    }
     setSelectedPermitId(null);
   };
 
